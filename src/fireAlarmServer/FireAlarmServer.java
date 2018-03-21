@@ -121,7 +121,7 @@ public class FireAlarmServer {
 					String sensorText = sensorTextInput.readLine();
 					if (sensorText != null && sensorText.startsWith("DATA:")) {
 						sensorId = sensorText.substring(5);	// cutting of the DATA part from the string.
-
+						
 						// get the hashmap that contains the data from the ObjectInputStream and assign it to a Helper Object.
 						@SuppressWarnings("unchecked")
 						HashMap<String, String> input;

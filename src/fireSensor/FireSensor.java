@@ -33,12 +33,18 @@ public class FireSensor {
 				sensorData.put("battery", "70");
 				sensorData.put("smoke", "1");
 				sensorData.put("co2", "300.0");
-				
-				// send the data to the server
-				sensorDataOutput.writeObject(sensorData);
-				
+
 				// let the server know data is ready to be read through its ObjectInputStream;
 				sensorTextOutput.println("DATA:23-11");
+				// send the data to the server
+				sensorDataOutput.writeObject(sensorData);
+			
+				for (int i = 0; i < 50; i++) {
+					System.out.print(" " + i);
+				}
+				
+				// TODO Always reset so the next write object wont corrupt the stream!
+				sensorDataOutput.reset();
 			}
 		}
 		catch (IOException ioe) {
