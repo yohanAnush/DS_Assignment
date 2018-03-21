@@ -145,7 +145,15 @@ public class FireSensorHelper {
 	}
 	
 	
-	
+	// For testing whether data is passed from the client to the server properly.
+	// TODO Remove this method after all implementations are done.
+	public void printData() {
+		System.out.println(this.sensorId);
+		System.out.println("Temps   : " + this.temperature);
+		System.out.println("Battery : " + this.batteryPercentage);
+		System.out.println("Smoke   : " + this.smokeLevel);
+		System.out.println("CO2     : " + this.co2Level);
+	}
 	
 	
 	

@@ -102,7 +102,7 @@ public class FireAlarmServer {
 		public void run() {
 			try {
 				sensorTextInput =  new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				sensorDataInput = new ObjectInputStream(socket.getInputStream());
+				//sensorDataInput = new ObjectInputStream(socket.getInputStream());
 				
 				
 				/* 
@@ -112,21 +112,23 @@ public class FireAlarmServer {
 				 * Example: DATA:22-13
 				 */
 				while (true) {
-					if (sensorTextInput.readLine().startsWith("DATA")) {
+					if (sensorTextInput.readLine().startsWith("DATA:")) {
 						sensorId = sensorTextInput.readLine().substring(4);	// cutting of the DATA part from the string.
 						
+						
+						System.out.println(sensorId);
 						// get the hashmap that contains the data from the ObjectInputStream and assign it to a Helper Object.
 						@SuppressWarnings("unchecked")
 						HashMap<String, String> input;
-						try {
-							input = (HashMap<String, String>)sensorDataInput.readObject();
+						//try {
+							//input = (HashMap<String, String>)sensorDataInput.readObject();
 							FireSensorHelper sensorData = new FireSensorHelper();
 							
 							sensorData.setSensorId(sensorId);
-							sensorData.setTemperature(Double.parseDouble(input.get("temperature")));
-							sensorData.setBatteryPercentage(Integer.parseInt(input.get("battery")));
-							sensorData.setSmokeLevel(Integer.parseInt(input.get("smoke")));
-							sensorData.setCo2Level(Double.parseDouble(input.get("co2")));
+							//sensorData.setTemperature(Double.parseDouble(input.get("temperature")));
+							//sensorData.setBatteryPercentage(Integer.parseInt(input.get("battery")));
+							//sensorData.setSmokeLevel(Integer.parseInt(input.get("smoke")));
+							//sensorData.setCo2Level(Double.parseDouble(input.get("co2")));
 							
 							
 							synchronized (sensorAndData) {
@@ -138,11 +140,13 @@ public class FireAlarmServer {
 								else {
 									sensorAndData.put(sensorId, sensorData);
 								}
+								
+								sensorData.printData();
 							}
-						} 
-						catch (ClassNotFoundException e) {
-							continue;
-						}
+						//} 
+						//catch (ClassNotFoundException e) {
+						//	continue;
+						//}
 						
 					}
 				}
