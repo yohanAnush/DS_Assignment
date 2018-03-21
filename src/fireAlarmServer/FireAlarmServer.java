@@ -83,7 +83,10 @@ public class FireAlarmServer {
 		private ObjectInputStream sensorDataInput;	// this will delivery a hash map where a key can be 1 of the 4 parameters.
 												// and the value relevent to the parameter is the object assigned to the key.
 												// both the key and the object/value are Strings (Parse as needed).
-		
+		private ObjectOutputStream serverDataOutput;
+									// while we are not sending any data to the client,
+									// we need this object initialized before the input stream,
+									// in order for everything to work.
 		
 		/*
 		 * Constructor takes the socket of the sensor so the thread can communicate.
@@ -101,8 +104,9 @@ public class FireAlarmServer {
 		 */
 		public void run() {
 			try {
+				serverDataOutput = new ObjectOutputStream(socket.getOutputStream());	// must be initialized before input stream.
 				sensorTextInput =  new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				//sensorDataInput = new ObjectInputStream(socket.getInputStream());
+				sensorDataInput = new ObjectInputStream(socket.getInputStream());
 				
 				
 				/* 
@@ -112,23 +116,24 @@ public class FireAlarmServer {
 				 * Example: DATA:22-13
 				 */
 				while (true) {
-					if (sensorTextInput.readLine().startsWith("DATA:")) {
-						sensorId = sensorTextInput.readLine().substring(4);	// cutting of the DATA part from the string.
-						
-						
-						System.out.println(sensorId);
+					// TODO Always get the text input and data input of the sensor into a,
+					// 		local variable to avoid null pointers.
+					String sensorText = sensorTextInput.readLine();
+					if (sensorText != null && sensorText.startsWith("DATA:")) {
+						sensorId = sensorText.substring(5);	// cutting of the DATA part from the string.
+
 						// get the hashmap that contains the data from the ObjectInputStream and assign it to a Helper Object.
 						@SuppressWarnings("unchecked")
 						HashMap<String, String> input;
-						//try {
-							//input = (HashMap<String, String>)sensorDataInput.readObject();
+						try {
+							input = (HashMap<String, String>)sensorDataInput.readObject();
 							FireSensorHelper sensorData = new FireSensorHelper();
 							
 							sensorData.setSensorId(sensorId);
-							//sensorData.setTemperature(Double.parseDouble(input.get("temperature")));
-							//sensorData.setBatteryPercentage(Integer.parseInt(input.get("battery")));
-							//sensorData.setSmokeLevel(Integer.parseInt(input.get("smoke")));
-							//sensorData.setCo2Level(Double.parseDouble(input.get("co2")));
+							sensorData.setTemperature(Double.parseDouble(input.get("temperature")));
+							sensorData.setBatteryPercentage(Integer.parseInt(input.get("battery")));
+							sensorData.setSmokeLevel(Integer.parseInt(input.get("smoke")));
+							sensorData.setCo2Level(Double.parseDouble(input.get("co2")));
 							
 							
 							synchronized (sensorAndData) {
@@ -143,10 +148,10 @@ public class FireAlarmServer {
 								
 								sensorData.printData();
 							}
-						//} 
-						//catch (ClassNotFoundException e) {
-						//	continue;
-						//}
+						} 
+						catch (ClassNotFoundException e) {
+							continue;
+						}
 						
 					}
 				}
