@@ -29,13 +29,13 @@ public class FireSensor {
 				// add the parameters and their readings to the hashmap first.
 				HashMap<String, String> sensorData = new HashMap<>();
 
-				sensorData.put("temperature", "45.0");
+				sensorData.put("temperature", "49.0");
 				sensorData.put("battery", "70");
-				sensorData.put("smoke", "1");
+				sensorData.put("smoke", "3");
 				sensorData.put("co2", "300.0");
 
 				// let the server know data is ready to be read through its ObjectInputStream;
-				sensorTextOutput.println("DATA:23-11");
+				sensorTextOutput.println("DATA:33-8");
 				// send the data to the server
 				sensorDataOutput.writeObject(sensorData);
 			
@@ -45,6 +45,8 @@ public class FireSensor {
 				
 				// TODO Always reset so the next write object wont corrupt the stream!
 				sensorDataOutput.reset();
+				
+				break;
 			}
 		}
 		catch (IOException ioe) {

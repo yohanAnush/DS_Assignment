@@ -32,7 +32,7 @@ public class FireSensorHelper {
 		return temperature;
 	}
 	
-	public double getBatteryPercentage() {
+	public int getBatteryPercentage() {
 		return batteryPercentage;
 	}
 	

@@ -83,10 +83,14 @@ public class FireAlarmServer {
 		private ObjectInputStream sensorDataInput;	// this will delivery a hash map where a key can be 1 of the 4 parameters.
 												// and the value relevent to the parameter is the object assigned to the key.
 												// both the key and the object/value are Strings (Parse as needed).
+		
+		// while we are not sending any data to the client,
+		// we need this object initialized before the input stream,
+		// in order for everything to work.
+		// TODO initialize the ObjectOutputStream object before ObjectInpuStream.
+		@SuppressWarnings("unused")
 		private ObjectOutputStream serverDataOutput;
-									// while we are not sending any data to the client,
-									// we need this object initialized before the input stream,
-									// in order for everything to work.
+									
 		
 		/*
 		 * Constructor takes the socket of the sensor so the thread can communicate.
@@ -147,6 +151,11 @@ public class FireAlarmServer {
 								}
 								
 								sensorData.printData();
+								
+								// send the above data to the message queue as well,
+								// so anyone who's monitoring will get the data.
+								FireDataSender mqSender = new FireDataSender();
+								mqSender.sendDataToMonitors(sensorData);
 							}
 						} 
 						catch (ClassNotFoundException e) {
