@@ -68,7 +68,7 @@ public class FireDataSender {
 	 * 		has all the values.
 	 * 		=> Use ObjectMessage instead of TextMessage.
 	 */
-	public void sendDataToMonitors(FireSensorHelper fireSensorData) {
+	public void sendDataToMonitors(FireSensorData fireSensorData) {
 		// make sure a message queue exists in order to receive our data.
 		if (session != null && queue != null && messageProducer != null) {
 			try {

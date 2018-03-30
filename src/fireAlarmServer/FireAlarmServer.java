@@ -4,9 +4,10 @@ package fireAlarmServer;
 // 		since it will give a class not found error while searching for the package when compiling.
 
 
-import fireAlarmServer.FireSensorHelper;
+import fireAlarmServer.FireSensorData;
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -42,7 +43,7 @@ public class FireAlarmServer {
 	 *  Use a helper class to validate those parameters and check for dangerous values/levels.
 	 */
 	
-	private static HashMap<String, FireSensorHelper> sensorAndData = new HashMap<>();
+	private static HashMap<String, FireSensorData> sensorAndData = new HashMap<>();
 	
 	
 	/*
@@ -78,6 +79,7 @@ public class FireAlarmServer {
 	
 	private static class SensorHandler extends Thread {
 		private String sensorId;
+		private FireSensorData fireSensorData;
 		private Socket socket;
 		private BufferedReader sensorTextInput;	// gives sort of a heads-up before sending the actual data via object output stream.
 		private ObjectInputStream sensorDataInput;	// this will delivery a hash map where a key can be 1 of the 4 parameters.
@@ -100,6 +102,21 @@ public class FireAlarmServer {
 		}
 		
 		/*
+		 * Add FireSensor's data to the hashmap that we maintain.
+		 * Hashmap is keyed by the sensor's id and the data is paired with that key.
+		 * sensor id is of type String and data is of type FireSensorData.
+		 * 
+		 * TODO Always synchronize and avoid duplicates.
+		 */
+		public void insertDataToServerHashMap(String sensorId, FireSensorData fireSensorData) {
+			synchronized (sensorAndData) {
+				// HashMap will automatically replace the value if the sensorId already exists.
+				sensorAndData.put(sensorId, fireSensorData);
+			}
+			
+		}
+		
+		/*
 		 * run method of the Thread class.
 		 * Listens to the sensor and accepts the hashmap sent.
 		 * Parse the content of the hashmap as needed by the FireSensorHelper class,
@@ -119,49 +136,30 @@ public class FireAlarmServer {
 				 * 		DATA:<sensor_id>
 				 * Example: DATA:22-13
 				 */
+				HashMap<String, String> sensorDataAsHashMap;
+				FireSensorData fsd;
+				String sensorId;
+				
 				while (true) {
 					// TODO Always get the text input and data input of the sensor into a,
 					// 		local variable to avoid null pointers.
-					String sensorText = sensorTextInput.readLine();
-					if (sensorText != null && sensorText.startsWith("DATA:")) {
-						sensorId = sensorText.substring(5);	// cutting of the DATA part from the string.
-						
-						// get the hashmap that contains the data from the ObjectInputStream and assign it to a Helper Object.
-						@SuppressWarnings("unchecked")
-						HashMap<String, String> input;
-						try {
-							input = (HashMap<String, String>)sensorDataInput.readObject();
-							FireSensorHelper sensorData = new FireSensorHelper();
+					try {
+						if ( (sensorDataAsHashMap = (HashMap<String, String>) sensorDataInput.readObject()) != null) {
+							fsd = new FireSensorData().getFireSensorDataFromHashMap(sensorDataAsHashMap);
+							sensorId = fsd.getSensorId();
 							
-							sensorData.setSensorId(sensorId);
-							sensorData.setTemperature(Double.parseDouble(input.get("temperature")));
-							sensorData.setBatteryPercentage(Integer.parseInt(input.get("battery")));
-							sensorData.setSmokeLevel(Integer.parseInt(input.get("smoke")));
-							sensorData.setCo2Level(Double.parseDouble(input.get("co2")));
+							insertDataToServerHashMap(sensorId, fsd);
 							
-							
-							synchronized (sensorAndData) {
-								// if the sensor is already in the hash map, update its data;
-								// if not, add the sensor and data both.
-								if (sensorAndData.containsKey(sensorId)) {
-									sensorAndData.replace(sensorId, sensorData);
-								}
-								else {
-									sensorAndData.put(sensorId, sensorData);
-								}
-								
-								sensorData.printData();
-								
-								// send the above data to the message queue as well,
-								// so anyone who's monitoring will get the data.
-								FireDataSender mqSender = new FireDataSender();
-								mqSender.sendDataToMonitors(sensorData);
-							}
-						} 
-						catch (ClassNotFoundException e) {
-							continue;
+							// we need to notify the listners about the new data.
+							// always get the data from the hashmap instead of transmitting the local variable.
+							FireDataSender sender = new FireDataSender();
+							sender.sendDataToMonitors(sensorAndData.get(sensorId));
 						}
-						
+					} catch (ClassNotFoundException | EOFException e) {
+						// when data is not available, EOFException will be thrown but we, 
+						// simply ignore it since there won't be data all the time and we want,
+						// the loop to be running so it can read data whenever it's available.
+						continue;
 					}
 				}
 			}

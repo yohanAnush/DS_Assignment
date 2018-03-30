@@ -25,28 +25,32 @@ public class FireSensor {
 			
 			// send to the server
 			// TODO Send to the server according to the specifications.
+			HashMap<String, String> sensorData;
+			int count = 0; // for testing.
 			while (true) {
+				if (count > 2) {break;}	// for testing.
 				// add the parameters and their readings to the hashmap first.
-				HashMap<String, String> sensorData = new HashMap<>();
+				sensorData = new HashMap<>();
 
+				sensorData.put("sensorId", "10-10");
 				sensorData.put("temperature", "49.0");
 				sensorData.put("battery", "70");
 				sensorData.put("smoke", "3");
 				sensorData.put("co2", "300.0");
 
 				// let the server know data is ready to be read through its ObjectInputStream;
-				sensorTextOutput.println("DATA:33-8");
+				//sensorTextOutput.println("23-41");
 				// send the data to the server
 				sensorDataOutput.writeObject(sensorData);
-			
-				for (int i = 0; i < 50; i++) {
-					System.out.print(" " + i);
-				}
-				
 				// TODO Always reset so the next write object wont corrupt the stream!
-				sensorDataOutput.reset();
+				//sensorDataOutput.reset();
+				//sensorTextOutput.flush();
 				
-				break;
+				System.err.println("*** Data Sent");
+				
+				
+				count++;
+
 			}
 		}
 		catch (IOException ioe) {

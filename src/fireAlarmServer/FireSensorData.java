@@ -2,6 +2,7 @@ package fireAlarmServer;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.HashMap;
 
 /*
  * This class will act as a helper class to the server to manage sensor data.
@@ -14,7 +15,7 @@ import java.io.Serializable;
  *  The above parameters should be stored, and validated for their correctness and checked for,
  *  dangerous levels/values and notify the server right away as well.
  */
-public class FireSensorHelper {
+public class FireSensorData {
 	
 	private String sensorId;
 	private double temperature;
@@ -69,6 +70,18 @@ public class FireSensorHelper {
 	
 	public void setCo2Level(double co2Level) {
 		this.co2Level = co2Level;
+	}
+	
+	// Data is sent from the fire sensor as a hashmap, encoded as follows.
+	// 		Ex: "temp", "45.0"
+	public FireSensorData getFireSensorDataFromHashMap(HashMap<String, String> stringData) {
+		setSensorId(stringData.get("sensorId"));
+		setTemperature(Double.parseDouble(stringData.get("temperature")));
+		setBatteryPercentage(Integer.parseInt(stringData.get("battery")));
+		setSmokeLevel(Integer.parseInt(stringData.get("smoke")));
+		setCo2Level(Double.parseDouble(stringData.get("co2")));
+		
+		return this;
 	}
 	
 	
