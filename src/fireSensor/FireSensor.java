@@ -29,10 +29,11 @@ public class FireSensor {
 			int count = 0; // for testing.
 			while (true) {
 				if (count > 2) {break;}	// for testing.
+				
 				// add the parameters and their readings to the hashmap first.
 				sensorData = new HashMap<>();
 
-				sensorData.put("sensorId", "10-10");
+				sensorData.put("sensorId", "10-1" + Integer.toString(count));
 				sensorData.put("temperature", "49.0");
 				sensorData.put("battery", "70");
 				sensorData.put("smoke", "3");

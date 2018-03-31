@@ -1,4 +1,8 @@
-package fireAlarmServer;
+/*
+ * All the methods here are declared in the IMessageQueue interface and impelemented in FireAlarmServer class.
+ * 
+ * package fireAlarmServer;
+ */
 
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
