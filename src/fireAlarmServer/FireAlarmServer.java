@@ -37,7 +37,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *  RMI is used to let the monitors know about the current state of information.
  *  
  */
-public class FireAlarmServer implements ISocketConnection, IMessageQueue {
+public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer {
 	
 	// server config.
 	private static final int PORT_TO_LISTEN = 9001;
@@ -314,8 +314,7 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueue {
 						server.sendDataToMonitors(sensorAndData.get(sensorId));
 					}
 				}
-			}
-			
+			}	
 			finally {
 				// sensor disconnecting from the server.
 				// therefore remove the sensor and its data.
