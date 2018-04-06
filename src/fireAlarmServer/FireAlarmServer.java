@@ -21,9 +21,11 @@ import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
+import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.ObjectMessage;
 import javax.jms.Session;
+import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -120,7 +122,7 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 	 * (non-Javadoc)
 	 * @see fireAlarmServer.IMessageQueue#sendDataToMonitors(fireAlarmServer.FireSensorData)
 	 */
-	public void sendDataToMonitors(FireSensorData fireSensorData) {
+	public void sendToMonitors(FireSensorData fireSensorData) {
 		// make sure a message queue exists in order to receive our data.
 		if (session != null && queue != null && messageProducer != null) {
 			try {
@@ -139,6 +141,26 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 				
 				// indicate that the data were sent.
 				System.out.println("Data from " + fireSensorData.getSensorId() + " sensor to the queue.");
+				
+			} catch (JMSException jmse) {
+				jmse.printStackTrace();
+			}
+		}
+	}
+	
+	public void sendToMonitors(String messageStr) {
+		// make sure a message queue exists in order to receive our data.
+		if (session != null && queue != null && messageProducer != null) {
+			try {
+				TextMessage message = session.createTextMessage();
+				
+				message.setText(messageStr);
+				
+				// send the data to the queue.
+				messageProducer.send(message);
+				
+				// indicate that the data were sent.
+				System.err.println("Error * * *  " + messageStr);
 				
 			} catch (JMSException jmse) {
 				jmse.printStackTrace();
@@ -289,12 +311,7 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 			try {
 				server.initMessageQueue();
 				server.initSocketConnection(server.socket);
-				/* 
-				 * read if there's any data.
-				 * when data is present, client will notify with the following notation.
-				 * 		DATA:<sensor_id>
-				 * Example: DATA:22-13
-				 */
+				
 				HashMap<String, String> sensorDataAsHashMap;
 				FireSensorData fsd;
 				String sensorId;
@@ -311,7 +328,21 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 							
 						// we need to notify the listners about the new data.
 						// always get the data from the hashmap instead of transmitting the local variable.
-						server.sendDataToMonitors(sensorAndData.get(sensorId));
+						server.sendToMonitors(sensorAndData.get(sensorId));
+						
+						// check for errors and send error messages.
+						if (!fsd.isTemperatureInLevel()) {
+							server.sendToMonitors(fsd.getTempErr());
+						}
+						if (!fsd.isBatteryInLevel()) {
+							server.sendToMonitors(fsd.getBatteryErr());
+						}
+						if (!fsd.isSmokeInLevel()) {
+							server.sendToMonitors(fsd.getSmokeErr());
+						}
+						if (!fsd.isCo2InLevel()) {
+							server.sendToMonitors(fsd.getCo2Err());
+						}
 					}
 				}
 			}	

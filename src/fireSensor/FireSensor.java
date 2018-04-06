@@ -28,14 +28,14 @@ public class FireSensor {
 			HashMap<String, String> sensorData;
 			int count = 0; // for testing.
 			while (true) {
-				if (count > 2) {break;}	// for testing.
+				if (count > 0) {break;}	// for testing.
 				
 				// add the parameters and their readings to the hashmap first.
 				sensorData = new HashMap<>();
 
 				sensorData.put("sensorId", "10-1" + Integer.toString(count));
-				sensorData.put("temperature", "49.0");
-				sensorData.put("battery", "70");
+				sensorData.put("temperature", "89.0");
+				sensorData.put("battery", "100");
 				sensorData.put("smoke", "3");
 				sensorData.put("co2", "300.0");
 
@@ -43,15 +43,8 @@ public class FireSensor {
 				//sensorTextOutput.println("23-41");
 				// send the data to the server
 				sensorDataOutput.writeObject(sensorData);
-				// TODO Always reset so the next write object wont corrupt the stream!
-				//sensorDataOutput.reset();
-				//sensorTextOutput.flush();
-				
-				System.err.println("*** Data Sent");
-				
-				
+			
 				count++;
-
 			}
 		}
 		catch (IOException ioe) {

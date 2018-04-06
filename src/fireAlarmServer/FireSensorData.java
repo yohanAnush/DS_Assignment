@@ -23,6 +23,12 @@ public class FireSensorData {
 	private int smokeLevel;
 	private double co2Level;
 	
+	// for error handling.
+	private String tempErr = "";
+	private String batteryErr = "";
+	private String smokeErr = "";
+	private String co2Err = "";
+	
 	
 	// Getters.
 	public String getSensorId() {
@@ -45,13 +51,28 @@ public class FireSensorData {
 		return co2Level;
 	}
 	
+	public String getTempErr() {
+		return tempErr;
+	}
+
+	public String getBatteryErr() {
+		return batteryErr;
+	}
+
+	public String getSmokeErr() {
+		return smokeErr;
+	}
+
+	public String getCo2Err() {
+		return co2Err;
+	}
+
 	
 	
 	/* 
 	 * Setters.
 	 * A separate method should be used to determine such value is deemed dangerous as specified, or invalid.
 	 */
-	
 	public void setSensorId(String sensorId) {
 		this.sensorId = sensorId;
 	}
@@ -72,6 +93,22 @@ public class FireSensorData {
 		this.co2Level = co2Level;
 	}
 	
+	public void setTempErr(String tempErr) {
+		this.tempErr = tempErr;
+	}
+
+	public void setBatteryErr(String batteryErr) {
+		this.batteryErr = batteryErr;
+	}
+
+	public void setSmokeErr(String smokeErr) {
+		this.smokeErr = smokeErr;
+	}
+
+	public void setCo2Err(String co2Err) {
+		this.co2Err = co2Err;
+	}
+
 	// Data is sent from the fire sensor as a hashmap, encoded as follows.
 	// 		Ex: "temp", "45.0"
 	public FireSensorData getFireSensorDataFromHashMap(HashMap<String, String> stringData) {
@@ -89,6 +126,11 @@ public class FireSensorData {
 	 * Validators.
 	 * The 4 parameters will be checked for their validity and whether they indicate any sort of danger.
 	 * Always check for invalidity first and then for dangerous values.
+	 * 
+	 * If there's an error, we set the error message to the variable relevant to holding that param's error, and
+	 * no error means the variable getting an empty string.
+	 * We do so to allow the server to check if there's an error(since validation methods returns a boolean), 
+	 * and if there's an error, server can get the relevant error and send to the monitors.
 	 */
 	
 	// Minimum possible temperature is -273.15 degrees celcius.
@@ -96,13 +138,16 @@ public class FireSensorData {
 	public boolean isTemperatureInLevel() {
 		boolean validity = true;
 		
+		// always set the error to none at the beginning.
+		setTempErr("");
+		
 		if (this.temperature < -273.15) {
 			validity = false;
-			System.out.println(this.sensorId + " : Sensor is malfunctioning; A temperature of " + this.temperature + " celcius is below absolute zero.");
+			setTempErr(this.sensorId + " : Sensor is malfunctioning; A temperature of " + this.temperature + " celcius is below absolute zero.");
 		}
 		else if (this.temperature > 50.0) {
 			validity = false;
-			System.out.println(this.sensorId + " : Temperature is reaching a dangerous level at " + this.temperature + " celcius.");
+			setTempErr(this.sensorId + " : Temperature is reaching a dangerous level at " + this.temperature + " celcius.");
 		}
 		
 		return validity;
@@ -113,14 +158,16 @@ public class FireSensorData {
 	public boolean isBatteryInLevel() {
 		boolean validity = true;
 		
+		// always set the error to none at the beginning.
+		setBatteryErr("");
 		if (this.batteryPercentage > 100 || this.batteryPercentage < 0) {
 			validity = false;
-			System.out.println(this.sensorId + " : Battery malfunction.");
+			setBatteryErr(this.sensorId + " : Battery malfunction.");
 		}
 		
 		else if (this.batteryPercentage <= 30) {
 			validity = false;
-			System.out.println(this.sensorId + " : Battery low!");
+			setBatteryErr(this.sensorId + " : Battery low!");
 		}
 
 		return validity;
@@ -131,13 +178,16 @@ public class FireSensorData {
 	public boolean isSmokeInLevel() {
 		boolean validity = true;
 		
+		// always set the error to none at the beginning.
+		setSmokeErr("");
+		
 		if (this.smokeLevel < 1 || this.smokeLevel > 10) {
-			System.out.println(this.sensorId + " : Smoke sensor malfunction.");
+			setSmokeErr(this.sensorId + " : Smoke sensor malfunction.");
 			validity = false;
 		}
 		
 		else if (this.smokeLevel > 7) {
-			System.out.println(this.sensorId + " : Smoke level is at a dangerous level of " + this.smokeLevel);
+			setSmokeErr(this.sensorId + " : Smoke level is at a dangerous level of " + this.smokeLevel);
 			validity = false;
 		}
 		
@@ -149,8 +199,11 @@ public class FireSensorData {
 	public boolean isCo2InLevel() {
 		boolean validity = true; 
 		
+		// always set the error to none at the beginning.
+		setCo2Err("");
+		
 		if (this.co2Level != 300.0) {
-			System.out.println(this.sensorId + " : CO2 level is at a dangerous level of " + this.co2Level);
+			setCo2Err(this.sensorId + " : CO2 level is at a dangerous level of " + this.co2Level);
 			validity = false;
 		}
 		

@@ -9,6 +9,7 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 import javax.jms.ObjectMessage;
 import javax.jms.Session;
+import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -77,21 +78,39 @@ public class FireSensorMonitor implements MessageListener {
 	 */
 	@Override
 	public void onMessage(Message message) {
-		ObjectMessage sensorData = (ObjectMessage)message;
 		
-		// get the parameters separately.
-		// params:- sensorId, temperature, battery, smoke, co2.
-		try {
-			System.out.print(" Sensor: " + sensorData.getStringProperty("sensorId"));
-			System.out.print(" Tempeature: " + sensorData.getDoubleProperty("temperature"));
-			System.out.print(" Battery: " + sensorData.getIntProperty("battery"));
-			System.out.print(" Smoke: " + sensorData.getIntProperty("smoke"));
-			System.out.print(" CO2: " + sensorData.getDoubleProperty("co2"));
-			System.out.println();
+		// data is sent as an ObjectMessage and any error is sent as a TextMessage,
+		// and that's why we check the type before doing anything else.
+		
+		// for data.
+		if (message instanceof ObjectMessage) {
+			ObjectMessage sensorData = (ObjectMessage)message;
 			
-		} catch (JMSException jmse) {
-			jmse.printStackTrace();
+			// get the parameters separately.
+			// params:- sensorId, temperature, battery, smoke, co2.
+			try {
+				System.out.print(" Sensor: " + sensorData.getStringProperty("sensorId"));
+				System.out.print(" Tempeature: " + sensorData.getDoubleProperty("temperature"));
+				System.out.print(" Battery: " + sensorData.getIntProperty("battery"));
+				System.out.print(" Smoke: " + sensorData.getIntProperty("smoke"));
+				System.out.print(" CO2: " + sensorData.getDoubleProperty("co2"));
+				System.out.println();
+				
+			} catch (JMSException jmse) {
+				jmse.printStackTrace();
+			}
 		}
+		
+		// for errors.
+		if (message instanceof TextMessage) {
+			try {
+				System.out.println(" * * *  " + ((TextMessage) message).getText());
+				System.out.println();
+			} catch (JMSException jmse) {
+				jmse.printStackTrace();
+			}
+		}
+		
 	}
 	
 	/*
