@@ -16,9 +16,9 @@ public class FireSensor {
 	// TODO mimic the procedure of the sensor getting data by using a file.
 	public static void main(String[] main) {
 		String server = "localhost";
-		
+		Socket socket = null;
 		try {
-			Socket socket = new Socket(server, 9001);
+			socket = new Socket(server, 9001);
 			sensorDataOutput = new ObjectOutputStream(socket.getOutputStream());
 			serverDataInput = new ObjectInputStream(socket.getInputStream());
 			sensorTextOutput = new PrintWriter(socket.getOutputStream(), true);
@@ -28,7 +28,7 @@ public class FireSensor {
 			HashMap<String, String> sensorData;
 			int count = 0; // for testing.
 			while (true) {
-				if (count > 0) {break;}	// for testing.
+				if (count > 3) {break;}	// for testing.
 				
 				// add the parameters and their readings to the hashmap first.
 				sensorData = new HashMap<>();
@@ -45,11 +45,12 @@ public class FireSensor {
 				sensorDataOutput.writeObject(sensorData);
 			
 				count++;
+				
+				Thread.sleep(5000);
 			}
 		}
-		catch (IOException ioe) {
-			ioe.printStackTrace();
+		catch (IOException | InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
-
 }
