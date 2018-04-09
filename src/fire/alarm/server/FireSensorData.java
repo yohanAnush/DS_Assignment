@@ -1,4 +1,4 @@
-package fireAlarmServer;
+package fire.alarm.server;
 
 import java.io.IOException;
 import java.io.Serializable;

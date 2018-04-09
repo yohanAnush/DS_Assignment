@@ -1,10 +1,4 @@
-package fireAlarmServer;
-
-// TODO comment the package name when compiling in a terminal/command prompt using RMIC compiler
-// 		since it will give a class not found error while searching for the package when compiling.
-
-
-import fireAlarmServer.FireSensorData;
+//package fire.alarm.server;
 
 import java.io.BufferedReader;
 import java.io.EOFException;
@@ -13,8 +7,19 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.rmi.AlreadyBoundException;
+import java.rmi.Naming;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 
 import javax.jms.Connection;
@@ -26,9 +31,13 @@ import javax.jms.MessageProducer;
 import javax.jms.ObjectMessage;
 import javax.jms.Session;
 import javax.jms.TextMessage;
+import javax.management.monitor.Monitor;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+
+import fire.alarm.server.FireSensorData;
+import fire.monitor.FireSensorMonitor;
 
 /*
  *  this will handle two responsibilities.
@@ -39,7 +48,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *  RMI is used to let the monitors know about the current state of information.
  *  
  */
-public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer {
+public class FireAlarmServer implements ISocketConnection, IRmiServer, Runnable {
 	
 	// server config.
 	private static final int PORT_TO_LISTEN = 9001;
@@ -57,12 +66,10 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 	 */
 	private static HashMap<String, FireSensorData> sensorAndData = new HashMap<>();
 	
-	// Message Queue properties.
-	private ConnectionFactory connectionFactory;
-	private Connection connection;
-	private Session session;
-	private Destination queue;
-	private MessageProducer messageProducer;
+	// RMI properties.
+	private static ArrayList<FireSensorMonitor> monitors = new ArrayList<>();
+	private static final String rmiRegistrationAddress = "rmi://localhost/server";
+	
 	
 	// Socket Connection properties.
 	private Socket socket;
@@ -78,95 +85,70 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 	@SuppressWarnings("unused")
 	private ObjectOutputStream serverDataOutput;
 	
-	// Message Queue implementation.
+	// RMI implementation.
 	/*
-	 * Initialize the connection and create the queue when the
-	 * object is created.
-	 *
+	 * We need to bind each server instance to the RMI registry so that,
+	 * each instance has access to the methods provided by monitors and vice-versa.
+	 * 
 	 * (non-Javadoc)
-	 * @see fireAlarmServer.IMessageQueue#initMessageQueue()
+	 * @see fire.alarm.server.IRmiService#bindToRegistry()
 	 */
-	public void initMessageQueue() {
+	public void bindToRegistry(FireAlarmServer serverInstance) {
 		try {
-			// connect to ActiveQM server as a sender.
-			connectionFactory = new ActiveMQConnectionFactory(ActiveMQConnection.DEFAULT_BROKER_URL);
-			connection = connectionFactory.createConnection();
+			// generate stub.
+			IRmiServer stub = (IRmiServer)UnicastRemoteObject.exportObject(serverInstance);
 			
-			// without casting we won't be able to access the setUseAsyncSend method.
-			((ActiveMQConnection)connection).setUseAsyncSend(true);
-			connection.start();
-			
-			// create a session for messaging sending.
-			// messages are not transacted => 1st arg is false.
-			// session will auto acknowledge.
-			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-			
-			// FireDataQueue is our messaging queue that's going to handle the delivery,
-			// of data sent by the server to the monitors.
-			// We will use this class on the server to send messages.
-			queue = session.createQueue("FireDataQueue");
-			messageProducer = session.createProducer(queue);
-		}
-		catch (JMSException jmse) {
-			jmse.printStackTrace();
+			// bind
+			Registry registry = LocateRegistry.getRegistry();
+			registry.bind("FireAlarmServer", stub);
+		} catch (RemoteException | AlreadyBoundException e) {
+			e.printStackTrace();
 		}
 	}
 	
 	/*
-	 * To send data from the server to monitors, use the following method.
-	 * We have 4 parameters to send which are ints and doubles.
-	 * TODO Check if you can send ints and doubles instead of sending a string that,
-	 * 		has all the values.
-	 * 		=> Use ObjectMessage instead of TextMessage.
-	 *
+	 * Here listeners are the monitors that observes the sensors' data.
+	 * 
 	 * (non-Javadoc)
-	 * @see fireAlarmServer.IMessageQueue#sendDataToMonitors(fireAlarmServer.FireSensorData)
+	 * @see fire.alarm.server.IRmiService#addListner(javax.management.monitor.Monitor)
 	 */
-	public void sendToMonitors(FireSensorData fireSensorData) {
-		// make sure a message queue exists in order to receive our data.
-		if (session != null && queue != null && messageProducer != null) {
-			try {
-				ObjectMessage dataToSend = session.createObjectMessage();
-				
-				// write the fire sensor's data.
-				// make sure sensor id is sent as well to identify which sensor is sending what.
-				dataToSend.setStringProperty("sensorId", fireSensorData.getSensorId());
-				dataToSend.setDoubleProperty("temperature", fireSensorData.getTemperature());
-				dataToSend.setIntProperty("battery", fireSensorData.getBatteryPercentage());
-				dataToSend.setIntProperty("smoke", fireSensorData.getSmokeLevel());
-				dataToSend.setDoubleProperty("co2", fireSensorData.getCo2Level());
-		
-				// send the data to the queue.
-				messageProducer.send(dataToSend);
-				
-				// indicate that the data were sent.
-				System.out.println("Data from " + fireSensorData.getSensorId() + " sensor to the queue.");
-				
-			} catch (JMSException jmse) {
-				jmse.printStackTrace();
-			}
+	public void addMonitor(FireSensorMonitor monitor) {
+		monitors.add(monitor);
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see fire.alarm.server.IRmiService#removeListner(javax.management.monitor.Monitor)
+	 */
+	public void removeMonitor(FireSensorMonitor monitor) {
+		monitors.remove(monitor);
+	}
+	
+	/*
+	 * This method is responsible for notifying all the listening monitors if there's new data.
+	 * 
+	 * (non-Javadoc)
+	 * @see fire.alarm.server.IRmiService#notifyMonitors(fire.alarm.server.FireSensorData)
+	 */
+	public void notifyMonitors(FireSensorData sensorData) {
+		for(FireSensorMonitor monitor: monitors) {
+			// TODO Call the async method on each monitor.
 		}
 	}
 	
-	public void sendToMonitors(String messageStr) {
-		// make sure a message queue exists in order to receive our data.
-		if (session != null && queue != null && messageProducer != null) {
-			try {
-				TextMessage message = session.createTextMessage();
-				
-				message.setText(messageStr);
-				
-				// send the data to the queue.
-				messageProducer.send(message);
-				
-				// indicate that the data were sent.
-				System.err.println("Error * * *  " + messageStr);
-				
-			} catch (JMSException jmse) {
-				jmse.printStackTrace();
-			}
+	/*
+	 * Same as the above method but conveys error strings instead of data.
+	 * Thereofore, the monitor's error handling method should be called!
+	 * 
+	 * (non-Javadoc)
+	 * @see fire.alarm.server.IRmiService#notifyMonitors(java.lang.String)
+	 */
+	public void notifyMonitors(String error) {
+		for(FireSensorMonitor monitor: monitors) {
+			// TODO Call the async method on each monitor.
 		}
 	}
+	
 	
 	// Socket Connection implementations.
 	/*
@@ -251,7 +233,9 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 		try {
 			// accept as requests come.
 			while (true) {
-				new ServerInstance(portListner.accept()).start();
+				FireAlarmServer server = new FireAlarmServer(portListner.accept());
+				Thread t = new Thread(server);
+				t.start();
 			}
 		}
 		finally {
@@ -283,19 +267,14 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 	 */
 	
 	/* * * Each ServerInstance is simple an unique instance of FireAlarmServer with a couple of data handling parameters. * * */
+	private String sensorId;
+	private FireSensorData fireSensorData;
+	private long lastUpdate;	// using Time() we can get the difference easily.
 	
-	private static class ServerInstance extends Thread {
-		private FireAlarmServer server;
-		private String sensorId;
-		private FireSensorData fireSensorData;
-		
-		/*
-		 * Constructor takes the socket of the sensor so the thread can communicate.
-		 */
-		public ServerInstance(Socket sensorSocket) {
-			server = new FireAlarmServer();
-			server.socket = sensorSocket;
-		}
+	
+	public FireAlarmServer(Socket sensorSocket) throws RemoteException {
+		this.socket = sensorSocket;
+	}
 		
 		
 		
@@ -305,45 +284,66 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 		 * Parse the content of the hashmap as needed by the FireSensorHelper class,
 		 * TODO And determine if the monitors should be notified or not.
 		 * TODO Send alert to the sensors to turn the alarm on.
+		 * 
+		 * Monitors should be notified if the sensor does not report back after an hour.
 		 */
 		@SuppressWarnings("unchecked")
 		public void run() {
 			try {
-				server.initMessageQueue();
-				server.initSocketConnection(server.socket);
+				bindToRegistry(this);
+				initSocketConnection(socket);
 				
 				HashMap<String, String> sensorDataAsHashMap;
 				FireSensorData fsd;
-				String sensorId;
+				String sensorId = "Unassigned Sensor Id";
 				FireDataSender sender = new FireDataSender();
+				lastUpdate = System.currentTimeMillis();
 				
 				while (true) {
 					// TODO Always get the text input and data input of the sensor into a,
 					// 		local variable to avoid null pointers.
-					if ( (sensorDataAsHashMap = (HashMap<String, String>) server.readSocketData()) != null) {
+					
+					// Monitors should be notified if the sensor's last update exceeds one hour.
+					// 1 hour = 3.6e+6 millis. 
+					if ((System.currentTimeMillis() - lastUpdate) > 	600) {
+						notifyMonitors(sensorId + " has not reported in 1 hour.");
+						
+						// Don't remove the following code as it will result in a non-stop loop until data arrives.
+						// Sending the warning once and then waiting another 1 hour will suffice.
+						lastUpdate = System.currentTimeMillis();
+					}
+					
+					if ( (sensorDataAsHashMap = (HashMap<String, String>) readSocketData()) != null) {
 						fsd = new FireSensorData().getFireSensorDataFromHashMap(sensorDataAsHashMap);
 						sensorId = fsd.getSensorId();
+						fsd.printData();
 							
-						server.insertDataToServerHashMap(sensorId, fsd);
+						insertDataToServerHashMap(sensorId, fsd);
 							
-						// we need to notify the listners about the new data.
+						// we need to notify the listeners about the new data.
 						// always get the data from the hashmap instead of transmitting the local variable.
-						server.sendToMonitors(sensorAndData.get(sensorId));
+						notifyMonitors(sensorAndData.get(sensorId));
 						
 						// check for errors and send error messages.
 						if (!fsd.isTemperatureInLevel()) {
-							server.sendToMonitors(fsd.getTempErr());
+							notifyMonitors(fsd.getTempErr());
 						}
 						if (!fsd.isBatteryInLevel()) {
-							server.sendToMonitors(fsd.getBatteryErr());
+							notifyMonitors(fsd.getBatteryErr());
 						}
 						if (!fsd.isSmokeInLevel()) {
-							server.sendToMonitors(fsd.getSmokeErr());
+							notifyMonitors(fsd.getSmokeErr());
 						}
 						if (!fsd.isCo2InLevel()) {
-							server.sendToMonitors(fsd.getCo2Err());
+							notifyMonitors(fsd.getCo2Err());
 						}
+						
+						// coming upto this points indicates that the sensor sent data,
+						// hence we can set the last update to the current time.
+						lastUpdate = System.currentTimeMillis();
 					}
+					
+					
 				}
 			}	
 			finally {
@@ -354,9 +354,8 @@ public class FireAlarmServer implements ISocketConnection, IMessageQueueProducer
 				}
 				
 				// close the connection.
-				server.closeSocket();
+				closeSocket();
 			}
 		}
-	}
 	
 }

@@ -1,4 +1,4 @@
-package fireSensor;
+package fire.alarm.sensor;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
